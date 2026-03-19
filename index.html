@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐯 เสือกินเส้น — ระบบคิดต้นทุนเมนู</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --bg:#0d0d14;--surface:#13131e;--surface2:#1a1a28;--surface3:#202030;
+    --border:#252538;--border2:#2e2e48;
+    --text:#e8e8f0;--text2:#8888aa;--text3:#454560;
+    --orange:#ff7a1a;--orange2:#ff9a4a;--orange-dim:#ff7a1a22;
+    --green:#22c55e;--green-dim:#22c55e1a;
+    --yellow:#f59e0b;--yellow-dim:#f59e0b1a;
+    --red:#ef4444;--red-dim:#ef44441a;
+    --blue:#38bdf8;--purple:#a78bfa;
+  }
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Sarabun',sans-serif;font-size:14px;overflow:hidden;}
+
+/* ── LAYOUT ── */
+#app{display:flex;height:100vh;overflow:hidden;}
+#sidebar{width:240px;background:var(–surface);border-right:1px solid var(–border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(–border2);border-radius:2px;}
+
+/* ── SIDEBAR TOP ── */
+#logo{padding:16px 14px 10px;border-bottom:1px solid var(–border);}
+#logo .brand{font-size:17px;font-weight:800;color:var(–orange);letter-spacing:-0.3px;}
+#logo .sub{font-size:9px;color:var(–text3);letter-spacing:2px;text-transform:uppercase;margin-top:1px;}
+#logo .stats{display:flex;gap:6px;margin-top:8px;}
+.stat-pill{background:var(–orange-dim);color:var(–orange);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;}
+
+/* ── SEARCH ── */
+.search-wrap{padding:8px 10px 4px;}
+input[type=text],input[type=number]{font-family:‘Sarabun’,sans-serif;}
+.search-input{width:100%;background:var(–surface2);border:1px solid var(–border);border-radius:8px;padding:6px 10px;color:var(–text);font-size:12px;outline:none;transition:border-color .2s;}
+.search-input:focus{border-color:var(–orange);}
+.search-input::placeholder{color:var(–text3);}
+
+/* ── CAT FILTER ── */
+.cat-filter{padding:0 8px 6px;display:flex;flex-wrap:wrap;gap:3px;}
+.cat-btn{font-size:9px;padding:2px 7px;border-radius:20px;border:none;cursor:pointer;transition:all .15s;font-family:‘Sarabun’,sans-serif;font-weight:600;}
+.cat-btn.active{color:#fff;}
+.cat-btn:not(.active){background:var(–surface2);color:var(–text3);}
+
+/* ── MENU LIST ── */
+#menu-list{flex:1;overflow-y:auto;}
+.cat-group-label{padding:6px 12px 3px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;opacity:.9;}
+.menu-item{padding:7px 12px;cursor:pointer;border-left:3px solid transparent;transition:all .12s;user-select:none;}
+.menu-item:hover{background:var(–surface2);}
+.menu-item.active{background:var(–surface2);border-left-color:var(–orange);}
+.menu-item .m-name{font-size:12px;font-weight:600;color:var(–text);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.menu-item.active .m-name{color:#fff;}
+.menu-item .m-meta{display:flex;justify-content:space-between;align-items:center;margin-top:2px;}
+.menu-item .m-price{font-size:10px;color:var(–text3);}
+.menu-item .m-profit{font-size:9px;font-weight:700;}
+
+/* ── SIDEBAR BOTTOM ── */
+#sidebar-bottom{border-top:1px solid var(–border);padding:8px;}
+.sidebar-btn{width:100%;background:transparent;border:1px solid var(–border);border-radius:8px;padding:7px;color:var(–text2);font-size:11px;cursor:pointer;font-family:‘Sarabun’,sans-serif;transition:all .2s;}
+.sidebar-btn:hover{background:var(–surface2);color:var(–text);}
+.sidebar-btn.active-tab{background:var(–surface2);color:var(–orange);border-color:var(–orange);}
+
+/* ── MAIN HEADER ── */
+#main-header{padding:14px 20px;border-bottom:1px solid var(–border);background:var(–surface);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.header-left .menu-badge{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;}
+.header-left .menu-title{font-size:19px;font-weight:800;color:#fff;}
+.header-left .menu-en{font-size:11px;color:var(–text3);}
+.header-right{text-align:right;}
+.header-price{font-size:24px;font-weight:900;color:var(–orange);}
+.header-cost{font-size:11px;font-weight:700;margin-top:2px;}
+
+/* ── TABS ── */
+#tabs{display:flex;padding:0 20px;background:var(–surface);border-bottom:1px solid var(–border);flex-shrink:0;}
+.tab-btn{padding:9px 14px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(–text3);font-weight:400;font-size:12px;cursor:pointer;font-family:‘Sarabun’,sans-serif;transition:all .2s;}
+.tab-btn:hover{color:var(–text);}
+.tab-btn.active{color:var(–orange);border-bottom-color:var(–orange);font-weight:700;}
+
+/* ── CONTENT AREA ── */
+#content{flex:1;display:flex;overflow:hidden;}
+.tab-pane{display:none;flex:1;overflow:hidden;}
+.tab-pane.active{display:flex;}
+
+/* ── RECIPE TAB ── */
+#recipe-editor{flex:1;overflow-y:auto;padding:18px 20px;}
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.section-title{font-size:13px;font-weight:700;color:var(–text);}
+.small-btn{background:var(–surface2);border:1px solid var(–border);border-radius:8px;padding:5px 11px;color:var(–text2);font-size:11px;cursor:pointer;font-family:‘Sarabun’,sans-serif;transition:all .2s;}
+.small-btn:hover{color:var(–text);}
+
+/* empty state */
+.empty-state{text-align:center;padding:50px 20px;color:var(–text3);}
+.empty-state .emoji{font-size:48px;display:block;margin-bottom:10px;}
+.empty-state p{font-size:14px;color:var(–text2);margin-bottom:4px;}
+.empty-state small{font-size:11px;color:var(–text3);}
+
+/* ingredient row */
+.ing-row{background:var(–surface2);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;border:1px solid var(–border);margin-bottom:6px;transition:all .2s;}
+.ing-row:hover{border-color:var(–border2);}
+.ing-info{flex:1;min-width:0;}
+.ing-name{font-size:13px;font-weight:600;color:var(–text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ing-sub{font-size:10px;color:var(–text3);margin-top:1px;font-family:‘IBM Plex Mono’,monospace;}
+.qty-controls{display:flex;align-items:center;gap:5px;}
+.qty-btn{width:26px;height:26px;background:var(–surface3);border:none;border-radius:6px;color:var(–text2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.qty-btn:hover{background:var(–border2);color:var(–text);}
+.qty-input{width:62px;text-align:center;background:var(–bg);border:1px solid var(–border2);border-radius:6px;color:#fff;font-size:13px;font-weight:700;padding:4px 5px;outline:none;font-family:‘IBM Plex Mono’,monospace;}
+.qty-input:focus{border-color:var(–orange);}
+.qty-unit{font-size:10px;color:var(–text3);min-width:20px;font-family:‘IBM Plex Mono’,monospace;}
+.line-cost{min-width:64px;text-align:right;font-size:13px;font-weight:700;color:var(–orange);font-family:‘IBM Plex Mono’,monospace;}
+.del-btn{width:24px;height:24px;background:var(–red-dim);border:none;border-radius:6px;color:var(–red);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+.del-btn:hover{background:var(–red);color:#fff;}
+
+/* cost breakdown */
+#cost-breakdown{margin-top:16px;background:#16161f;border-radius:12px;padding:14px 16px;border:1px solid var(–border);}
+.cb-title{font-size:11px;font-weight:700;color:var(–text2);margin-bottom:10px;text-transform:uppercase;letter-spacing:1px;}
+.cb-row{display:flex;justify-content:space-between;padding:2px 0;font-size:12px;}
+.cb-label{color:var(–text2);}
+.cb-val{color:var(–text);font-family:‘IBM Plex Mono’,monospace;}
+.cb-divider{height:1px;background:var(–border);margin:8px 0;}
+.cb-total{display:flex;justify-content:space-between;align-items:center;}
+.cb-total-label{font-size:13px;font-weight:700;color:var(–text);}
+.cb-total-val{font-size:18px;font-weight:900;font-family:‘IBM Plex Mono’,monospace;}
+.profit-bar-wrap{margin-top:8px;}
+.profit-bar-track{height:6px;background:var(–bg);border-radius:3px;overflow:hidden;}
+.profit-bar-fill{height:100%;border-radius:3px;transition:width .5s cubic-bezier(.4,0,.2,1);}
+.profit-status{font-size:10px;color:var(–text3);margin-top:4px;}
+
+/* ── INGREDIENT PANEL ── */
+#ing-panel{width:268px;border-left:1px solid var(–border);background:#0f0f18;display:flex;flex-direction:column;flex-shrink:0;transition:all .3s;}
+#ing-panel.hidden{width:0;overflow:hidden;border-left:none;}
+.ing-panel-top{padding:12px 12px 6px;border-bottom:1px solid var(–border);}
+.ing-panel-title{font-size:12px;font-weight:700;color:var(–text);margin-bottom:6px;}
+.ing-cat-filter{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px;}
+.ing-cat-btn{font-size:9px;padding:2px 6px;border-radius:20px;border:none;cursor:pointer;transition:all .15s;font-family:‘Sarabun’,sans-serif;font-weight:600;background:var(–surface2);color:var(–text3);}
+.ing-cat-btn.active{background:var(–orange);color:#fff;}
+#ing-list{flex:1;overflow-y:auto;padding:7px;}
+.ing-card{width:100%;text-align:left;background:var(–surface2);border:1px solid var(–border);border-radius:8px;padding:7px 9px;margin-bottom:3px;cursor:pointer;transition:all .15s;font-family:‘Sarabun’,sans-serif;}
+.ing-card:hover{background:var(–surface3);border-color:var(–border2);}
+.ing-card.in-recipe{background:#0a1f10;border-color:#166534;}
+.ing-card-name{font-size:11px;font-weight:600;color:var(–text);line-height:1.3;}
+.ing-card.in-recipe .ing-card-name{color:#86efac;}
+.ing-card-cost{font-size:9px;color:var(–text3);margin-top:1px;font-family:‘IBM Plex Mono’,monospace;}
+.ing-card.in-recipe .ing-card-cost{color:#4ade80;}
+
+/* ── SUMMARY TAB ── */
+#summary-content{flex:1;overflow-y:auto;padding:20px;}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+.stat-card{background:var(–surface2);border-radius:10px;padding:12px 14px;border:1px solid var(–border);}
+.stat-card-label{font-size:10px;color:var(–text3);margin-bottom:3px;}
+.stat-card-val{font-size:19px;font-weight:800;line-height:1.2;}
+.stat-card-sub{font-size:11px;color:var(–text2);margin-top:2px;}
+.filter-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;align-items:center;}
+.filter-label{font-size:11px;color:var(–text3);}
+.filter-btn{padding:3px 9px;border-radius:20px;border:none;cursor:pointer;font-size:10px;font-family:‘Sarabun’,sans-serif;font-weight:600;transition:all .15s;background:var(–surface2);color:var(–text3);}
+.filter-btn.active{background:var(–orange);color:#fff;}
+.cost-table{background:var(–surface2);border-radius:12px;border:1px solid var(–border);overflow:hidden;margin-bottom:14px;}
+.cost-table table{width:100%;border-collapse:collapse;}
+.cost-table thead th{padding:8px 12px;text-align:left;font-size:9px;font-weight:700;color:var(–text3);text-transform:uppercase;letter-spacing:.8px;background:var(–surface);border-bottom:1px solid var(–border);}
+.cost-table tbody tr{border-bottom:1px solid var(–border);cursor:pointer;transition:background .1s;}
+.cost-table tbody tr:hover{background:var(–surface3);}
+.cost-table tbody tr:last-child{border-bottom:none;}
+.cost-table td{padding:9px 12px;font-size:12px;}
+.td-name{font-weight:600;color:var(–text);}
+.td-cat .badge{font-size:9px;}
+.td-mono{font-family:‘IBM Plex Mono’,monospace;font-size:11px;}
+.mini-bar-wrap{display:flex;align-items:center;gap:6px;}
+.mini-bar-track{flex:1;height:5px;background:var(–bg);border-radius:3px;overflow:hidden;min-width:36px;}
+.mini-bar-fill{height:100%;border-radius:3px;}
+.mini-pct{font-size:10px;font-weight:700;font-family:‘IBM Plex Mono’,monospace;min-width:38px;}
+.status-badge{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:700;white-space:nowrap;}
+.no-recipe-box{padding:12px;background:var(–surface);border-radius:10px;border:1px solid var(–border);}
+.no-recipe-label{font-size:11px;color:var(–text3);margin-bottom:6px;}
+.no-recipe-pills{display:flex;flex-wrap:wrap;gap:5px;}
+.no-recipe-pill{font-size:10px;padding:3px 9px;border-radius:20px;background:var(–surface2);border:1px solid var(–border);color:var(–text3);cursor:pointer;transition:all .15s;}
+.no-recipe-pill:hover{color:var(–text);border-color:var(–border2);}
+
+/* ── SETTINGS TAB ── */
+#settings-content{flex:1;overflow-y:auto;padding:24px;max-width:520px;}
+.settings-title{font-size:16px;font-weight:800;color:var(–text);margin-bottom:2px;}
+.settings-sub{font-size:12px;color:var(–text3);margin-bottom:20px;}
+.setting-row{background:var(–surface2);border-radius:12px;padding:12px 14px;border:1px solid var(–border);display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.setting-info .setting-label{font-size:13px;font-weight:600;color:var(–text);}
+.setting-info .setting-desc{font-size:11px;color:var(–text3);margin-top:1px;}
+.setting-control{display:flex;align-items:center;gap:6px;}
+.setting-input{width:72px;text-align:center;background:var(–bg);border:1px solid var(–border2);border-radius:8px;color:var(–orange);font-size:15px;font-weight:700;padding:5px 6px;outline:none;font-family:‘IBM Plex Mono’,monospace;transition:border-color .2s;}
+.setting-input:focus{border-color:var(–orange);}
+.setting-suffix{font-size:11px;color:var(–text3);min-width:50px;}
+.preview-box{background:var(–surface2);border-radius:12px;padding:14px;border:1px solid var(–border2);margin-top:20px;}
+.preview-title{font-size:11px;font-weight:700;color:var(–text2);margin-bottom:8px;}
+.preview-row{display:flex;justify-content:space-between;padding:2px 0;font-size:11px;}
+.preview-label{color:var(–text3);}
+.preview-val{color:var(–text2);font-family:‘IBM Plex Mono’,monospace;}
+.preview-divider{height:1px;background:var(–border);margin:7px 0;}
+.preview-total{display:flex;justify-content:space-between;font-size:12px;font-weight:700;}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+.ing-row{animation:fadeIn .2s ease;}
+
+/* ── MOBILE HINT ── */
+@media(max-width:900px){
+#sidebar{width:200px;}
+.stats-grid{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+
+</head>
+<body>
+<div id="app">
+
+  <!-- SIDEBAR -->
+
+  <div id="sidebar">
+    <div id="logo">
+      <div class="brand">🐯 เสือกินเส้น</div>
+      <div class="sub">Menu Cost Calculator</div>
+      <div class="stats">
+        <span class="stat-pill" id="recipe-count-pill">0 / 56 เมนู</span>
+      </div>
+    </div>
+    <div class="search-wrap">
+      <input type="text" id="menu-search" class="search-input" placeholder="ค้นหาเมนู...">
+    </div>
+    <div class="cat-filter" id="cat-filter"></div>
+    <div id="menu-list"></div>
+    <div id="sidebar-bottom">
+      <button class="sidebar-btn" id="summary-tab-btn" onclick="switchMainTab('summary')">📊 สรุปต้นทุนทุกเมนู</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+
+  <div id="main">
+    <div id="main-header">
+      <div class="header-left">
+        <div class="menu-badge">
+          <span class="badge" id="hdr-cat-badge"></span>
+          <span class="badge" id="hdr-rec-badge" style="display:none;background:#f59e0b22;color:#f59e0b;">⭐ แนะนำ</span>
+        </div>
+        <div class="menu-title" id="hdr-title">เลือกเมนูจากแถบซ้าย</div>
+        <div class="menu-en" id="hdr-en"></div>
+      </div>
+      <div class="header-right">
+        <div class="header-price" id="hdr-price">—</div>
+        <div class="header-cost" id="hdr-cost"></div>
+      </div>
+    </div>
+
+```
+<div id="tabs">
+  <button class="tab-btn active" data-tab="recipe">📝 สูตรอาหาร</button>
+  <button class="tab-btn" data-tab="settings">⚙️ ตั้งค่า</button>
+  <button class="tab-btn" data-tab="summary">📊 สรุปรวม</button>
+</div>
+
+<div id="content">
+  <!-- RECIPE TAB -->
+  <div class="tab-pane active" id="tab-recipe" style="flex-direction:row;">
+    <div id="recipe-editor">
+      <div class="section-header">
+        <span class="section-title">📋 วัตถุดิบในสูตร <span id="ing-count" style="color:var(--orange);"></span></span>
+        <button class="small-btn" id="toggle-ing-panel">← ซ่อนคลัง</button>
+      </div>
+      <div id="ing-rows-container"></div>
+      <div id="cost-breakdown" style="display:none;"></div>
+    </div>
+
+    <div id="ing-panel">
+      <div class="ing-panel-top">
+        <div class="ing-panel-title">🥘 คลังวัตถุดิบ</div>
+        <input type="text" id="ing-search" class="search-input" placeholder="ค้นหาวัตถุดิบ...">
+        <div class="ing-cat-filter" id="ing-cat-filter"></div>
+      </div>
+      <div id="ing-list"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div class="tab-pane" id="tab-settings">
+    <div id="settings-content">
+      <div class="settings-title">⚙️ ตั้งค่าต้นทุน</div>
+      <div class="settings-sub">ค่าใช้จ่ายเหล่านี้จะถูกเพิ่มในทุกเมนูโดยอัตโนมัติ</div>
+      <div id="settings-rows"></div>
+      <div class="preview-box" id="preview-box"></div>
+    </div>
+  </div>
+
+  <!-- SUMMARY TAB -->
+  <div class="tab-pane" id="tab-summary">
+    <div id="summary-content"></div>
+  </div>
+</div>
+```
+
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  DATA
+// ══════════════════════════════════════════
+const INGS = [
+  {id:"I001",name:"บะหมี่เส้นแบน อย่างดี",unit:"ห่อ",cost:40,cat:"เส้น"},
+  {id:"I002",name:"เส้นหมี่แชมป์",unit:"g",cost:0.034,cat:"เส้น"},
+  {id:"I003",name:"เส้นใหญ่น้ำหนึ่งโล",unit:"g",cost:0.025,cat:"เส้น"},
+  {id:"I004",name:"เส้นเล็กอาทิตย์",unit:"g",cost:0.032,cat:"เส้น"},
+  {id:"I005",name:"เส้นเล็กดอกบัว",unit:"g",cost:0.035,cat:"เส้น"},
+  {id:"I006",name:"วุ้นเส้นกิเลน",unit:"g",cost:0.032,cat:"เส้น"},
+  {id:"I007",name:"มาม่าต้มยำ (ห่อสีเงิน)",unit:"ห่อ",cost:185,cat:"เส้น"},
+  {id:"I008",name:"ข้าวหอมมะลิ",unit:"g",cost:0.025,cat:"เส้น"},
+  {id:"I009",name:"เส้นหมี่ (หมี่คลุก)",unit:"g",cost:0.034,cat:"เส้น"},
+  {id:"I010",name:"เนื้อสามชั้น",unit:"g",cost:0.22,cat:"เนื้อวัว"},
+  {id:"I011",name:"ชายโครง",unit:"g",cost:0.22,cat:"เนื้อวัว"},
+  {id:"I012",name:"เนื้อสด",unit:"g",cost:0.22,cat:"เนื้อวัว"},
+  {id:"I013",name:"ตับเนื้อ",unit:"g",cost:0.23,cat:"เนื้อวัว"},
+  {id:"I014",name:"ผ้าขี้ริ้ว",unit:"g",cost:0.20,cat:"เนื้อวัว"},
+  {id:"I015",name:"เอ็นเนื้อ",unit:"g",cost:0.20,cat:"เนื้อวัว"},
+  {id:"I016",name:"ขั้วตับเนื้อ",unit:"g",cost:0.18,cat:"เนื้อวัว"},
+  {id:"I017",name:"เนื้อสับ",unit:"g",cost:0.22,cat:"เนื้อวัว"},
+  {id:"I018",name:"เนื้อตุ๋น",unit:"g",cost:0.25,cat:"เนื้อวัว"},
+  {id:"I019",name:"ลูกชิ้นเนื้อโฮเด้งลูกใหญ่",unit:"คู่",cost:205,cat:"ลูกชิ้น"},
+  {id:"I020",name:"ลูกชิ้นหมูโฮเด้งลูกใหญ่",unit:"คู่",cost:205,cat:"ลูกชิ้น"},
+  {id:"I021",name:"ลูกชิ้นเอ็นเนื้อโฮเด้งลูกใหญ่",unit:"คู่",cost:205,cat:"ลูกชิ้น"},
+  {id:"I022",name:"ลูกชิ้นหมูปิ้ง",unit:"ลูก",cost:4,cat:"ลูกชิ้น"},
+  {id:"I023",name:"ลูกชิ้นเนื้อ",unit:"ลูก",cost:5,cat:"ลูกชิ้น"},
+  {id:"I024",name:"ขั้วตับหมู",unit:"g",cost:0.185,cat:"หมู"},
+  {id:"I025",name:"หมูหั่นชิ้น",unit:"g",cost:0.14,cat:"หมู"},
+  {id:"I026",name:"หมูสับ",unit:"g",cost:0.14,cat:"หมู"},
+  {id:"I027",name:"หมูตุ๋น",unit:"g",cost:0.16,cat:"หมู"},
+  {id:"I028",name:"หมูกรอบ",unit:"g",cost:0.30,cat:"หมู"},
+  {id:"I029",name:"ถั่วงอก",unit:"g",cost:0.022,cat:"ผัก"},
+  {id:"I030",name:"ผักคึ่นช่าย",unit:"g",cost:0.08,cat:"ผัก"},
+  {id:"I031",name:"ผักกาดหอม",unit:"g",cost:0.08,cat:"ผัก"},
+  {id:"I032",name:"ใบกระเพราแดง",unit:"g",cost:0.06,cat:"ผัก"},
+  {id:"I033",name:"ใบกระเพราขาว",unit:"g",cost:0.07,cat:"ผัก"},
+  {id:"I034",name:"พริกแดงจินดา",unit:"g",cost:0.095,cat:"ผัก"},
+  {id:"I035",name:"พริกขี้หนูสวนสีเขียว",unit:"g",cost:0.18,cat:"ผัก"},
+  {id:"I036",name:"ใบเตย",unit:"g",cost:0.06,cat:"ผัก"},
+  {id:"I037",name:"กระเทียมกลีบเล็ก",unit:"g",cost:0.09,cat:"ผัก"},
+  {id:"I038",name:"กระเทียมกลีบใหญ่",unit:"g",cost:0.09,cat:"ผัก"},
+  {id:"I039",name:"กระเทียมเจียวเล็ก",unit:"g",cost:0.60,cat:"ผัก"},
+  {id:"I040",name:"กระเทียมเจียวใหญ่",unit:"g",cost:0.45,cat:"ผัก"},
+  {id:"I041",name:"ตะไคร้",unit:"g",cost:0.05,cat:"ผัก"},
+  {id:"I042",name:"มะนาว",unit:"ลูก",cost:3,cat:"ผัก"},
+  {id:"I043",name:"น้ำตาลปี๊บอย่างดี",unit:"g",cost:0.045,cat:"ซอส"},
+  {id:"I044",name:"น้ำตาลมะพร้าว",unit:"g",cost:0.055,cat:"ซอส"},
+  {id:"I045",name:"น้ำตาลทราย",unit:"g",cost:0.025,cat:"ซอส"},
+  {id:"I046",name:"ซีอิ๊วขาวเห็ดหอม (ml)",unit:"ml",cost:0.07,cat:"ซอส"},
+  {id:"I047",name:"ซีอิ๊วดำ ฉลากส้ม",unit:"ml",cost:0.066,cat:"ซอส"},
+  {id:"I048",name:"น้ำซุปปรุงรสฝาเขียว",unit:"ml",cost:0.075,cat:"ซอส"},
+  {id:"I049",name:"น้ำมันหอย",unit:"ml",cost:0.083,cat:"ซอส"},
+  {id:"I050",name:"น้ำปลา",unit:"ml",cost:0.04,cat:"ซอส"},
+  {id:"I051",name:"ซีอิ๊วขาว",unit:"ml",cost:0.05,cat:"ซอส"},
+  {id:"I052",name:"น้ำส้มสายชู",unit:"ml",cost:0.021,cat:"ซอส"},
+  {id:"I053",name:"น้ำมันงา",unit:"ml",cost:0.26,cat:"ซอส"},
+  {id:"I054",name:"น้ำมันพืช",unit:"ml",cost:0.055,cat:"ซอส"},
+  {id:"I055",name:"น้ำส้มหมัก",unit:"ขวด",cost:25,cat:"ซอส"},
+  {id:"I056",name:"กะทิ",unit:"ml",cost:0.05,cat:"ซอส"},
+  {id:"I057",name:"พริกไทย (ไม่ละเอียด)",unit:"g",cost:0.50,cat:"เครื่องแห้ง"},
+  {id:"I058",name:"พริกไทยขาวเม็ด",unit:"g",cost:0.424,cat:"เครื่องแห้ง"},
+  {id:"I059",name:"พริกไทยดำเม็ด",unit:"g",cost:0.342,cat:"เครื่องแห้ง"},
+  {id:"I060",name:"พริกแห้ง",unit:"g",cost:0.40,cat:"เครื่องแห้ง"},
+  {id:"I061",name:"พริกป่นไร่ทิพย์",unit:"ห่อ",cost:110,cat:"เครื่องแห้ง"},
+  {id:"I062",name:"พริกน้ำตาลไร่ทิพย์",unit:"Pack",cost:27,cat:"เครื่องแห้ง"},
+  {id:"I063",name:"เม็ดผักชี",unit:"g",cost:0.25,cat:"เครื่องแห้ง"},
+  {id:"I064",name:"ผงพะโล้",unit:"P.",cost:10,cat:"เครื่องแห้ง"},
+  {id:"I065",name:"รสดีหมู (g)",unit:"g",cost:0.15,cat:"สำเร็จรูป"},
+  {id:"I066",name:"รสดีเนื้อ (Pack)",unit:"Pack",cost:150,cat:"สำเร็จรูป"},
+  {id:"I067",name:"รสดีเนื้อ 70g",unit:"g",cost:0.357,cat:"สำเร็จรูป"},
+  {id:"I068",name:"ตุ๋นเนื้อ ส.เพิ่มทรัพย์",unit:"แผง",cost:80,cat:"สำเร็จรูป"},
+  {id:"I069",name:"ตุ๋นหมู ส.เพิ่มทรัพย์",unit:"แผง",cost:80,cat:"สำเร็จรูป"},
+  {id:"I070",name:"ผงหมักหมูนุ่ม",unit:"แผง",cost:85,cat:"สำเร็จรูป"},
+  {id:"I071",name:"ซีอิ๊วขาวเห็ดหอม (ขวด)",unit:"ขวด",cost:75,cat:"สำเร็จรูป"},
+  {id:"I072",name:"เครื่องปรุงหมู (ท่อ)",unit:"ท่อ",cost:40,cat:"สำเร็จรูป"},
+  {id:"I073",name:"เครื่องปรุงเนื้อ (ท่อ)",unit:"ท่อ",cost:40,cat:"สำเร็จรูป"},
+  {id:"I074",name:"น้ำสต๊อกหมู (ทำเอง)",unit:"ml",cost:0.00554,cat:"น้ำสต๊อก"},
+  {id:"I075",name:"น้ำสต๊อกเนื้อ (ทำเอง)",unit:"ml",cost:0.0051,cat:"น้ำสต๊อก"},
+  {id:"I076",name:"ไข่ไก่",unit:"ฟอง",cost:4,cat:"อื่นๆ"},
+  {id:"I077",name:"เต้าหู้เหลือง",unit:"g",cost:0.04,cat:"อื่นๆ"},
+  {id:"I078",name:"มะพร้าวทั้งลูก",unit:"ลูก",cost:20,cat:"อื่นๆ"},
+  {id:"I079",name:"มะละกอ",unit:"g",cost:0.02,cat:"อื่นๆ"},
+  {id:"I080",name:"กล้วย",unit:"ลูก",cost:5,cat:"อื่นๆ"},
+  {id:"I081",name:"ขนุน",unit:"g",cost:0.05,cat:"อื่นๆ"},
+  {id:"I082",name:"พริกไทยขาวไร่ทิพย์ (P.)",unit:"P.",cost:60,cat:"เครื่องแห้ง"},
+];
+
+const MENUS = [
+  {id:"M00",cat:"รายการเสริม",name:"สั่งทำข้าวกล่อง+น้ำขวด",en:"Custom Lunch Box + Bottled Water",price:70,rec:false},
+  {id:"M01",cat:"เครื่องดื่ม",name:"ชาไทย",en:"Thai Milk Tea",price:25,rec:false},
+  {id:"M02",cat:"เครื่องดื่ม",name:"ชเวปส์มะนาวโซดา",en:"Schweppes",price:25,rec:false},
+  {id:"M03",cat:"เครื่องดื่ม",name:"น้ำมะพร้าว",en:"Coconut Water",price:30,rec:true},
+  {id:"M04",cat:"เครื่องดื่ม",name:"น้ำส้ม",en:"Orange Juice",price:15,rec:false},
+  {id:"M05",cat:"เครื่องดื่ม",name:"น้ำส้ม SPLASH",en:"SPLASH Orange Juice",price:20,rec:false},
+  {id:"M06",cat:"เครื่องดื่ม",name:"น้ำเขียว",en:"Green Soda",price:15,rec:false},
+  {id:"M07",cat:"เครื่องดื่ม",name:"น้ำเปล่า",en:"Bottled Water",price:10,rec:false},
+  {id:"M08",cat:"เครื่องดื่ม",name:"น้ำแดง",en:"Red Soda",price:15,rec:false},
+  {id:"M09",cat:"เครื่องดื่ม",name:"น้ำเก๊กฮวย",en:"Chrysanthemum Tea",price:25,rec:false},
+  {id:"M10",cat:"เครื่องดื่ม",name:"สไปร์ท",en:"Sprite",price:15,rec:false},
+  {id:"M11",cat:"เครื่องดื่ม",name:"โค้ก",en:"Coke",price:15,rec:false},
+  {id:"M12",cat:"เครื่องดื่ม",name:"โค้กซีโร่",en:"Coke Zero",price:15,rec:false},
+  {id:"M13",cat:"เครื่องดื่ม",name:"โออิชิ",en:"Oishi Green Tea",price:15,rec:false},
+  {id:"M14",cat:"เมนูข้าว",name:"ข้าวกระเพราหมูตุ๋น",en:"Pork Boiled Basil with Rice",price:60,rec:false},
+  {id:"M15",cat:"เมนูข้าว",name:"ข้าวกระเพราหมูนุ่ม",en:"Pork Basil with Rice",price:60,rec:false},
+  {id:"M16",cat:"เมนูข้าว",name:"ข้าวกระเพราหมูสับ",en:"Pork mince Basil with Rice",price:60,rec:false},
+  {id:"M17",cat:"เมนูข้าว",name:"ข้าวกระเพราเนื้อตุ๋น",en:"Beef Boiled Basil with Rice",price:70,rec:false},
+  {id:"M18",cat:"เมนูข้าว",name:"ข้าวกระเพราเนื้อสับ",en:"Beef mince Basil with Rice",price:70,rec:false},
+  {id:"M19",cat:"เมนูข้าว",name:"ข้าวกระเพราเนื้อแดดเดียว",en:"Basil Stir-Fry Sun-Dried Beef over Rice",price:99,rec:true},
+  {id:"M20",cat:"เมนูข้าว",name:"ข้าวตับเนื้อกระเทียม",en:"Beef Liver Garlic Rice",price:70,rec:false},
+  {id:"M21",cat:"เมนูข้าว",name:"ข้าวหมูกระเทียม",en:"Pork Garlic Rice",price:60,rec:false},
+  {id:"M22",cat:"เมนูข้าว",name:"ข้าวเนื้อกระเทียม",en:"Beef Garlic Rice",price:70,rec:false},
+  {id:"M23",cat:"เมนูข้าว",name:"ข้าวเปล่า",en:"Steamed Rice",price:10,rec:false},
+  {id:"M24",cat:"เมนูข้าว",name:"บะหมี่ลวก",en:"Blanched Noodle",price:25,rec:false},
+  {id:"M25",cat:"เมนูข้าว",name:"ผัดกระเทียม (L)",en:"Stir-fry Garlic (L)",price:100,rec:false},
+  {id:"M26",cat:"เมนูข้าว",name:"ผัดกระเพรา (L)",en:"Stir-fry Basil (L)",price:100,rec:false},
+  {id:"M27",cat:"เมนูข้าว",name:"ลูกชิ้นลวก",en:"Blanched Meatball",price:50,rec:false},
+  {id:"M28",cat:"เมนูข้าว",name:"ไข่ดาว",en:"Fried Egg",price:10,rec:false},
+  {id:"M29",cat:"ก๋วยเตี๋ยวเนื้อ",name:"ก๋วยเตี๋ยวเนื้อ",en:"Beef Noodle",price:70,rec:false},
+  {id:"M30",cat:"ก๋วยเตี๋ยวเนื้อ",name:"ลวกจิ้มรวม",en:"Beef Boiled Platter",price:120,rec:false},
+  {id:"M31",cat:"ก๋วยเตี๋ยวเนื้อ",name:"หม้อไฟเนื้อ",en:"Beef Hot Pot",price:299,rec:false},
+  {id:"M32",cat:"ก๋วยเตี๋ยวเนื้อ",name:"เกาเหลาเนื้อ",en:"Beef Soup",price:100,rec:false},
+  {id:"M33",cat:"ก๋วยเตี๋ยวหมู",name:"ก๋วยเตี๋ยวเด็ก",en:"Kids Noodle Soup",price:35,rec:false},
+  {id:"M34",cat:"ก๋วยเตี๋ยวหมู",name:"ก๋วยเตี๋ยวหมู",en:"Pork Noodle",price:60,rec:true},
+  {id:"M35",cat:"ก๋วยเตี๋ยวหมู",name:"หมี่คลุกหมูนุ่ม",en:"Vermicelli with Spicy Pork",price:89,rec:true},
+  {id:"M36",cat:"ก๋วยเตี๋ยวหมู",name:"หม้อไฟหมู",en:"Pork Hot Pot",price:269,rec:false},
+  {id:"M37",cat:"ก๋วยเตี๋ยวหมู",name:"เกาเหลาหมู",en:"Pork Soup (No Noodles)",price:80,rec:false},
+  {id:"M38",cat:"ขนมหวาน",name:"กล้วยอบ เซทคริสมาส",en:"Baked Banana Christmas Set",price:99,rec:false},
+  {id:"M39",cat:"ขนมหวาน",name:"ขนมถ้วย",en:"Thai Coconut Milk Custard",price:20,rec:false},
+  {id:"M40",cat:"ขนมหวาน",name:"ขนมบ้าบิ่น",en:"Thai Coconut Pancake",price:50,rec:true},
+  {id:"M41",cat:"ขนมหวาน",name:"ขนุนปอกพร้อมทาน",en:"Fresh Jackfruit",price:50,rec:false},
+  {id:"M42",cat:"ขนมหวาน",name:"ผลไม้ชั่งกิโล",en:"Fresh Fruit by Weight",price:0,rec:false},
+  {id:"M43",cat:"ขนมหวาน",name:"มะละกอทั้งลูก (L)",en:"Ripe Papaya (L)",price:30,rec:false},
+  {id:"M44",cat:"ขนมหวาน",name:"มะละกอปอกพร้อมทาน (M)",en:"Ripe Papaya (M)",price:50,rec:false},
+  {id:"M45",cat:"ขนมหวาน",name:"ลอดช่องน้ำกะทิ",en:"Pandan Jelly with Coconut Milk",price:35,rec:false},
+  {id:"M46",cat:"ขนมหวาน",name:"ส้มสดลูกใหญ่",en:"Fresh Large Oranges",price:40,rec:false},
+  {id:"M47",cat:"อาหารว่าง",name:"กล้วยฉาบ L",en:"Banana Chips (L)",price:60,rec:false},
+  {id:"M48",cat:"อาหารว่าง",name:"กล้วยตาก (ซองแยกชิ้น)",en:"Dried Banana",price:69,rec:false},
+  {id:"M49",cat:"อาหารว่าง",name:"กล้วยตาก พลังงานแสงอาทิตย์",en:"Solar Dried Banana",price:120,rec:false},
+  {id:"M50",cat:"อาหารว่าง",name:"ลูกชิ้นหมูปิ้ง จัดเซท",en:"Grilled Pork Ball Set",price:60,rec:true},
+  {id:"M51",cat:"อาหารว่าง",name:"เต้าหู้ ต้ามู่",en:"Tofu (Tao Mu)",price:60,rec:true},
+  {id:"M52",cat:"อาหารว่าง",name:"เนื้อทอดแดดเดียว",en:"Fried Sun-Dried Beef",price:99,rec:true},
+  {id:"M53",cat:"อาหารว่าง",name:"แคปวัว",en:"Crispy Beef Skin",price:35,rec:false},
+  {id:"M54",cat:"Promotion",name:"หมี่คลุกหมูนุ่ม+มะละกอ",en:"Vermicelli Spicy Pork + Ripe Papaya",price:99,rec:false},
+  {id:"M55",cat:"Promotion",name:"หมี่คลุกเนื้อนุ่มหนังไก่กรอบ",en:"Spicy Vermicelli Beef & Crispy Chicken",price:109,rec:false},
+];
+
+const CAT_COLOR = {
+  "รายการเสริม":"#6366f1","เครื่องดื่ม":"#06b6d4","เมนูข้าว":"#f59e0b",
+  "ก๋วยเตี๋ยวเนื้อ":"#ef4444","ก๋วยเตี๋ยวหมู":"#f97316",
+  "ขนมหวาน":"#ec4899","อาหารว่าง":"#84cc16","Promotion":"#a855f7",
+};
+const CAT_ICON = {
+  "รายการเสริม":"📦","เครื่องดื่ม":"🧋","เมนูข้าว":"🍚",
+  "ก๋วยเตี๋ยวเนื้อ":"🥩","ก๋วยเตี๋ยวหมู":"🍜",
+  "ขนมหวาน":"🍮","อาหารว่าง":"🍢","Promotion":"🎯",
+};
+
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let state = {
+  selectedMenuId: "M34",
+  recipes: {}, // {menuId: [{ingId, qty}]}
+  settings: {wastePct:0.03, packaging:0, labor:0, other:0, platformPct:0},
+  menuSearch: "",
+  selectedCat: "ทั้งหมด",
+  ingSearch: "",
+  ingCat: "ทั้งหมด",
+  ingPanelVisible: true,
+  activeTab: "recipe",
+  sortBy: "profitPct",
+  summaryCat: "ทั้งหมด",
+};
+
+// ══════════════════════════════════════════
+//  COST CALC
+// ══════════════════════════════════════════
+function calcCost(menuId) {
+  const recipe = state.recipes[menuId] || [];
+  const raw = recipe.reduce((s,r) => {
+    const ing = INGS.find(i=>i.id===r.ingId);
+    return s + (ing ? ing.cost * r.qty : 0);
+  }, 0);
+  const menu = MENUS.find(m=>m.id===menuId);
+  const afterWaste = raw * (1 + state.settings.wastePct);
+  const platform = (menu?.price||0) * state.settings.platformPct;
+  const total = afterWaste + state.settings.packaging + state.settings.labor + state.settings.other + platform;
+  const profit = (menu?.price||0) - total;
+  const pct = (menu?.price||0) > 0 ? (profit/(menu.price))*100 : 0;
+  return {raw, afterWaste, total, profit, pct};
+}
+
+function profitColor(pct) {
+  if (pct > 50) return 'var(--green)';
+  if (pct > 30) return 'var(--yellow)';
+  return 'var(--red)';
+}
+function profitLabel(pct) {
+  if (pct > 50) return '✅ ดีมาก';
+  if (pct > 30) return '⚠️ พอใช้';
+  return '❌ ควรแก้ไข';
+}
+
+// ══════════════════════════════════════════
+//  RENDER SIDEBAR
+// ══════════════════════════════════════════
+function renderSidebar() {
+  // cat filter
+  const cats = ["ทั้งหมด",...Object.keys(CAT_COLOR)];
+  const cf = document.getElementById('cat-filter');
+  cf.innerHTML = cats.map(c => {
+    const col = CAT_COLOR[c] || '#f97316';
+    const active = state.selectedCat === c;
+    const bg = active ? col : 'var(--surface2)';
+    const color = active ? '#fff' : 'var(--text3)';
+    return `<button class="cat-btn${active?' active':''}" style="${active?`background:${col};`:'background:var(--surface2);'}" onclick="selectCat('${c}')">${c}</button>`;
+  }).join('');
+
+  // menu list
+  const search = state.menuSearch.toLowerCase();
+  const filtered = MENUS.filter(m =>
+    (state.selectedCat==='ทั้งหมด'||m.cat===state.selectedCat) &&
+    (m.name.toLowerCase().includes(search)||m.en.toLowerCase().includes(search))
+  );
+
+  const grouped = {};
+  filtered.forEach(m => {
+    if (!grouped[m.cat]) grouped[m.cat] = [];
+    grouped[m.cat].push(m);
+  });
+
+  let html = '';
+  Object.entries(grouped).forEach(([cat, menus]) => {
+    const col = CAT_COLOR[cat] || '#64748b';
+    html += `<div class="cat-group-label" style="color:${col}">${CAT_ICON[cat]||''} ${cat}</div>`;
+    menus.forEach(m => {
+      const hasRecipe = (state.recipes[m.id]||[]).length > 0;
+      const cost = hasRecipe ? calcCost(m.id) : null;
+      const active = state.selectedMenuId === m.id;
+      const profCol = cost ? profitColor(cost.pct) : 'var(--text3)';
+      html += `<div class="menu-item${active?' active':''}" onclick="selectMenu('${m.id}')">
+        <div class="m-name">${m.name}</div>
+        <div class="m-meta">
+          <span class="m-price">฿${m.price}</span>
+          ${hasRecipe
+            ? `<span class="m-profit" style="color:${profCol}">${cost.pct.toFixed(0)}% กำไร</span>`
+            : `<span style="font-size:9px;color:var(--text3)">ยังไม่มีสูตร</span>`}
+        </div>
+      </div>`;
+    });
+  });
+  document.getElementById('menu-list').innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;">ไม่พบเมนู</div>';
+
+  // count
+  const withRecipe = Object.keys(state.recipes).filter(k=>(state.recipes[k]||[]).length>0).length;
+  document.getElementById('recipe-count-pill').textContent = `${withRecipe} / ${MENUS.length} เมนู`;
+}
+
+// ══════════════════════════════════════════
+//  RENDER MAIN HEADER
+// ══════════════════════════════════════════
+function renderHeader() {
+  const m = MENUS.find(x=>x.id===state.selectedMenuId);
+  if (!m) return;
+  const col = CAT_COLOR[m.cat]||'#f97316';
+  document.getElementById('hdr-cat-badge').textContent = `${CAT_ICON[m.cat]||''} ${m.cat}`;
+  document.getElementById('hdr-cat-badge').style.cssText = `background:${col}22;color:${col};`;
+  document.getElementById('hdr-rec-badge').style.display = m.rec ? '' : 'none';
+  document.getElementById('hdr-title').textContent = m.name;
+  document.getElementById('hdr-en').textContent = m.en;
+  document.getElementById('hdr-price').textContent = `฿${m.price}`;
+
+  const recipe = state.recipes[m.id]||[];
+  if (recipe.length > 0) {
+    const c = calcCost(m.id);
+    const col2 = profitColor(c.pct);
+    document.getElementById('hdr-cost').style.color = col2;
+    document.getElementById('hdr-cost').textContent = `ต้นทุน ฿${c.total.toFixed(2)} · กำไร ${c.pct.toFixed(1)}%`;
+  } else {
+    document.getElementById('hdr-cost').textContent = '';
+  }
+}
+
+// ══════════════════════════════════════════
+//  RENDER RECIPE TAB
+// ══════════════════════════════════════════
+function renderRecipeTab() {
+  const m = MENUS.find(x=>x.id===state.selectedMenuId);
+  if (!m) return;
+  const recipe = state.recipes[m.id] || [];
+
+  document.getElementById('ing-count').textContent = `(${recipe.length})`;
+
+  const container = document.getElementById('ing-rows-container');
+  const breakdown = document.getElementById('cost-breakdown');
+
+  if (recipe.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <span class="emoji">🧾</span>
+      <p>ยังไม่มีวัตถุดิบในสูตร</p>
+      <small>กดที่วัตถุดิบในคลังด้านขวาเพื่อเพิ่ม</small>
+    </div>`;
+    breakdown.style.display = 'none';
+    return;
+  }
+
+  let rowsHtml = '';
+  recipe.forEach(r => {
+    const ing = INGS.find(i=>i.id===r.ingId);
+    if (!ing) return;
+    const lc = (ing.cost * r.qty);
+    const step = (ing.unit==='g'||ing.unit==='ml') ? 10 : 1;
+    rowsHtml += `<div class="ing-row" id="row-${r.ingId}">
+      <div class="ing-info">
+        <div class="ing-name">${ing.name}</div>
+        <div class="ing-sub">฿${ing.cost.toFixed(4)}/${ing.unit}</div>
+      </div>
+      <div class="qty-controls">
+        <button class="qty-btn" onclick="adjustQty('${r.ingId}',-${step})">−</button>
+        <input type="number" class="qty-input" value="${r.qty}" min="0" onchange="setQty('${r.ingId}',this.value)" oninput="setQty('${r.ingId}',this.value)">
+        <span class="qty-unit">${ing.unit}</span>
+        <button class="qty-btn" onclick="adjustQty('${r.ingId}',${step})">+</button>
+      </div>
+      <div class="line-cost">฿${lc.toFixed(2)}</div>
+      <button class="del-btn" onclick="removeIng('${r.ingId}')">×</button>
+    </div>`;
+  });
+  container.innerHTML = rowsHtml;
+
+  // Cost breakdown
+  const c = calcCost(m.id);
+  const rows = [
+    ['วัตถุดิบรวม', c.raw],
+    [`+ ของเสีย (${(state.settings.wastePct*100).toFixed(0)}%)`, c.raw * state.settings.wastePct],
+    ['+ ค่าแพ็คเกจ', state.settings.packaging],
+    ['+ ค่าแรง', state.settings.labor],
+    ['+ ค่าใช้จ่ายอื่นๆ', state.settings.other],
+    [`+ แพลตฟอร์ม (${(state.settings.platformPct*100).toFixed(0)}%)`, m.price * state.settings.platformPct],
+  ].filter(([,v])=>v>0);
+
+  const barColor = profitColor(c.pct);
+  breakdown.style.display = '';
+  breakdown.innerHTML = `
+    <div class="cb-title">สรุปต้นทุน</div>
+    ${rows.map(([l,v])=>`<div class="cb-row"><span class="cb-label">${l}</span><span class="cb-val">฿${v.toFixed(2)}</span></div>`).join('')}
+    <div class="cb-divider"></div>
+    <div class="cb-total" style="margin-bottom:6px;">
+      <span class="cb-total-label">ต้นทุนรวม</span>
+      <span class="cb-total-val" style="color:var(--red)">฿${c.total.toFixed(2)}</span>
+    </div>
+    <div class="cb-total">
+      <span class="cb-total-label">กำไร / จาน</span>
+      <span class="cb-total-val" style="color:${barColor}">฿${c.profit.toFixed(2)} <small style="font-size:12px">(${c.pct.toFixed(1)}%)</small></span>
+    </div>
+    <div class="profit-bar-wrap">
+      <div class="profit-bar-track"><div class="profit-bar-fill" style="width:${Math.min(100,Math.max(0,c.pct))}%;background:${barColor};"></div></div>
+      <div class="profit-status">${profitLabel(c.pct)}</div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════
+//  RENDER INGREDIENT PANEL
+// ══════════════════════════════════════════
+function renderIngPanel() {
+  // cat filter
+  const ingCats = ['ทั้งหมด',...new Set(INGS.map(i=>i.cat))];
+  const icf = document.getElementById('ing-cat-filter');
+  icf.innerHTML = ingCats.map(c => {
+    const active = state.ingCat === c;
+    return `<button class="ing-cat-btn${active?' active':''}" onclick="selectIngCat('${c}')">${c}</button>`;
+  }).join('');
+
+  const recipe = state.recipes[state.selectedMenuId] || [];
+  const search = state.ingSearch.toLowerCase();
+  let list = INGS.filter(i =>
+    (state.ingCat==='ทั้งหมด'||i.cat===state.ingCat) &&
+    (!search || i.name.toLowerCase().includes(search))
+  );
+
+  const il = document.getElementById('ing-list');
+  il.innerHTML = list.map(ing => {
+    const inR = recipe.find(r=>r.ingId===ing.id);
+    return `<button class="ing-card${inR?' in-recipe':''}" onclick="addIng('${ing.id}')">
+      <div class="ing-card-name">${ing.name}${inR?' ✓':''}</div>
+      <div class="ing-card-cost">฿${ing.cost.toFixed(4)}/${ing.unit}</div>
+    </button>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+//  RENDER SETTINGS TAB
+// ══════════════════════════════════════════
+function renderSettings() {
+  const defs = [
+    {key:'wastePct',mul:100,label:'% ของเสีย',desc:'ความสูญเสียในกระบวนการทำอาหาร',suffix:'%',icon:'🗑️'},
+    {key:'packaging',mul:1,label:'ค่าแพ็คเกจ / กล่อง',desc:'กล่อง ถุง และอุปกรณ์บรรจุภัณฑ์',suffix:'บาท/เมนู',icon:'📦'},
+    {key:'labor',mul:1,label:'ค่าแรง',desc:'ค่าจ้างพ่อครัว + พนักงาน',suffix:'บาท/เมนู',icon:'👨‍🍳'},
+    {key:'other',mul:1,label:'ค่าใช้จ่ายอื่นๆ',desc:'ค่าน้ำ ค่าไฟ ค่าเช่า ฯลฯ',suffix:'บาท/เมนู',icon:'💡'},
+    {key:'platformPct',mul:100,label:'% ค่าธรรมเนียมแพลตฟอร์ม',desc:'Grab, LINE MAN ฯลฯ (คิดจากราคาขาย)',suffix:'%',icon:'🚚'},
+  ];
+
+  document.getElementById('settings-rows').innerHTML = defs.map(d => `
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">${d.icon} ${d.label}</div>
+        <div class="setting-desc">${d.desc}</div>
+      </div>
+      <div class="setting-control">
+        <input type="number" class="setting-input" value="${(state.settings[d.key]*d.mul).toFixed(d.mul===100?1:0)}" min="0" step="${d.mul===100?0.1:1}" onchange="updateSetting('${d.key}',this.value,${d.mul})" oninput="updateSetting('${d.key}',this.value,${d.mul})">
+        <span class="setting-suffix">${d.suffix}</span>
+      </div>
+    </div>`).join('');
+
+  // Preview
+  const ex = 25;
+  const m = MENUS.find(x=>x.id===state.selectedMenuId);
+  const price = m?.price || 60;
+  const exTotal = ex*(1+state.settings.wastePct)+state.settings.packaging+state.settings.labor+state.settings.other+price*state.settings.platformPct;
+  const exProfit = price - exTotal;
+  const exPct = price > 0 ? (exProfit/price*100) : 0;
+
+  document.getElementById('preview-box').innerHTML = `
+    <div class="preview-title">📐 ตัวอย่าง: สมมติต้นทุนวัตถุดิบ ฿${ex} จากเมนู ฿${price}</div>
+    <div class="preview-row"><span class="preview-label">วัตถุดิบ</span><span class="preview-val">฿${ex}</span></div>
+    ${state.settings.wastePct>0?`<div class="preview-row"><span class="preview-label">+ ของเสีย ${(state.settings.wastePct*100).toFixed(0)}%</span><span class="preview-val">฿${(ex*state.settings.wastePct).toFixed(2)}</span></div>`:''}
+    ${state.settings.packaging>0?`<div class="preview-row"><span class="preview-label">+ แพ็คเกจ</span><span class="preview-val">฿${state.settings.packaging}</span></div>`:''}
+    ${state.settings.labor>0?`<div class="preview-row"><span class="preview-label">+ ค่าแรง</span><span class="preview-val">฿${state.settings.labor}</span></div>`:''}
+    ${state.settings.other>0?`<div class="preview-row"><span class="preview-label">+ อื่นๆ</span><span class="preview-val">฿${state.settings.other}</span></div>`:''}
+    ${state.settings.platformPct>0?`<div class="preview-row"><span class="preview-label">+ แพลตฟอร์ม ${(state.settings.platformPct*100).toFixed(0)}%</span><span class="preview-val">฿${(price*state.settings.platformPct).toFixed(2)}</span></div>`:''}
+    <div class="preview-divider"></div>
+    <div class="preview-total">
+      <span style="color:var(--text)">ต้นทุนรวม</span>
+      <span style="color:var(--red);font-family:'IBM Plex Mono',monospace;">฿${exTotal.toFixed(2)}</span>
+    </div>
+    <div class="preview-total" style="margin-top:4px;">
+      <span style="color:var(--text)">กำไร</span>
+      <span style="color:${profitColor(exPct)};font-family:'IBM Plex Mono',monospace;">฿${exProfit.toFixed(2)} (${exPct.toFixed(1)}%)</span>
+    </div>`;
+}
+
+// ══════════════════════════════════════════
+//  RENDER SUMMARY TAB
+// ══════════════════════════════════════════
+function renderSummary() {
+  const allCosts = MENUS.map(m => ({...m, ...calcCost(m.id), has:(state.recipes[m.id]||[]).length>0}));
+  const withR = allCosts.filter(m=>m.has);
+  const filtered = withR.filter(m => state.summaryCat==='ทั้งหมด'||m.cat===state.summaryCat);
+  const sorted = [...filtered].sort((a,b) => {
+    if(state.sortBy==='profitPct') return b.pct-a.pct;
+    if(state.sortBy==='profit') return b.profit-a.profit;
+    if(state.sortBy==='cost') return a.total-b.total;
+    return b.price-a.price;
+  });
+  const noR = allCosts.filter(m=>!m.has);
+  const avgPct = filtered.length ? filtered.reduce((s,m)=>s+m.pct,0)/filtered.length : 0;
+
+  const sc = document.getElementById('summary-content');
+
+  if (withR.length === 0) {
+    sc.innerHTML = `<div class="empty-state" style="padding:80px 20px;">
+      <span class="emoji">📊</span>
+      <p>ยังไม่มีเมนูที่มีสูตรอาหาร</p>
+      <small>กลับไปแท็บ "สูตร" แล้วเพิ่มวัตถุดิบในเมนู</small>
+    </div>`;
+    return;
+  }
+
+  const best = sorted[0];
+  const worst = sorted[sorted.length-1];
+
+  const sortBtns = [['profitPct','% กำไร'],['profit','กำไร/จาน'],['cost','ต้นทุน'],['price','ราคาขาย']];
+  const catBtns = ['ทั้งหมด',...Object.keys(CAT_COLOR)];
+
+  sc.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card" style="border-color:var(--blue)33">
+        <div class="stat-card-label">เมนูมีสูตร</div>
+        <div class="stat-card-val" style="color:var(--blue)">${withR.length}</div>
+        <div class="stat-card-sub">/ ${MENUS.length} เมนู</div>
+      </div>
+      <div class="stat-card" style="border-color:${profitColor(avgPct)}33">
+        <div class="stat-card-label">กำไรเฉลี่ย</div>
+        <div class="stat-card-val" style="color:${profitColor(avgPct)}">${avgPct.toFixed(1)}%</div>
+        <div class="stat-card-sub">${profitLabel(avgPct)}</div>
+      </div>
+      <div class="stat-card" style="border-color:var(--green)33">
+        <div class="stat-card-label">กำไรสูงสุด</div>
+        <div class="stat-card-val" style="color:var(--green);font-size:${best?.name?.length>10?12:18}px">${best?.name||'—'}</div>
+        <div class="stat-card-sub" style="color:var(--green)">${best?best.pct.toFixed(0)+'%':''}</div>
+      </div>
+      <div class="stat-card" style="border-color:var(--red)33">
+        <div class="stat-card-label">กำไรต่ำสุด</div>
+        <div class="stat-card-val" style="color:var(--red);font-size:${worst?.name?.length>10?12:18}px">${worst?.name||'—'}</div>
+        <div class="stat-card-sub" style="color:var(--red)">${worst?worst.pct.toFixed(0)+'%':''}</div>
+      </div>
+    </div>
+
+    <div class="filter-row">
+      <span class="filter-label">เรียง:</span>
+      ${sortBtns.map(([k,l])=>`<button class="filter-btn${state.sortBy===k?' active':''}" onclick="setSortBy('${k}')">${l}</button>`).join('')}
+      <div style="flex:1"></div>
+      ${catBtns.map(c=>`<button class="filter-btn${state.summaryCat===c?' active':''}" style="${state.summaryCat===c&&CAT_COLOR[c]?`background:${CAT_COLOR[c]};color:#fff;`:''}" onclick="setSummaryCat('${c}')">${c}</button>`).join('')}
+    </div>
+
+    <div class="cost-table">
+      <table>
+        <thead>
+          <tr>
+            <th>เมนู</th><th>หมวด</th><th>ราคา</th><th>ต้นทุน</th><th>กำไร</th><th colspan="2">% กำไร</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sorted.map(m => {
+            const col = CAT_COLOR[m.cat]||'#64748b';
+            const pc = profitColor(m.pct);
+            return `<tr onclick="goToMenu('${m.id}')">
+              <td class="td-name">${m.name}</td>
+              <td class="td-cat"><span class="badge" style="background:${col}22;color:${col}">${m.cat}</span></td>
+              <td class="td-mono" style="color:var(--text2)">฿${m.price}</td>
+              <td class="td-mono" style="color:var(--orange)">฿${m.total.toFixed(2)}</td>
+              <td class="td-mono" style="color:${m.profit>=0?'var(--green)':'var(--red)'}">฿${m.profit.toFixed(2)}</td>
+              <td style="padding:9px 0 9px 12px">
+                <div class="mini-bar-wrap">
+                  <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${Math.min(100,Math.max(0,m.pct))}%;background:${pc}"></div></div>
+                  <span class="mini-pct" style="color:${pc}">${m.pct.toFixed(1)}%</span>
+                </div>
+              </td>
+              <td style="padding:9px 12px 9px 0">
+                <span class="status-badge" style="background:${m.pct>50?'#052e16':m.pct>30?'#431407':'#450a0a'};color:${m.pct>50?'#86efac':m.pct>30?'#fdba74':'#fca5a5'}">${profitLabel(m.pct)}</span>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    ${noR.length>0?`<div class="no-recipe-box">
+      <div class="no-recipe-label">⚪ ยังไม่มีสูตร (${noR.length} เมนู) — คลิกเพื่อเพิ่มสูตร</div>
+      <div class="no-recipe-pills">
+        ${noR.map(m=>`<button class="no-recipe-pill" onclick="goToMenu('${m.id}')">${m.name}</button>`).join('')}
+      </div>
+    </div>`:''}`;
+}
+
+// ══════════════════════════════════════════
+//  FULL RENDER
+// ══════════════════════════════════════════
+function render() {
+  renderSidebar();
+  renderHeader();
+  if (state.activeTab === 'recipe') { renderRecipeTab(); renderIngPanel(); }
+  if (state.activeTab === 'settings') renderSettings();
+  if (state.activeTab === 'summary') renderSummary();
+
+  // toggle ing panel
+  const panel = document.getElementById('ing-panel');
+  const btn = document.getElementById('toggle-ing-panel');
+  if (state.ingPanelVisible) {
+    panel.classList.remove('hidden');
+    btn.textContent = '← ซ่อนคลัง';
+  } else {
+    panel.classList.add('hidden');
+    btn.textContent = '+ เปิดคลัง';
+  }
+
+  // summary tab btn style
+  document.getElementById('summary-tab-btn').classList.toggle('active-tab', state.activeTab==='summary');
+}
+
+// ══════════════════════════════════════════
+//  ACTIONS
+// ══════════════════════════════════════════
+function selectMenu(id) {
+  state.selectedMenuId = id;
+  state.activeTab = 'recipe';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab==='recipe'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id==='tab-recipe'));
+  render();
+}
+function selectCat(cat) { state.selectedCat = cat; renderSidebar(); }
+function selectIngCat(cat) { state.ingCat = cat; renderIngPanel(); }
+
+function addIng(ingId) {
+  if (!state.recipes[state.selectedMenuId]) state.recipes[state.selectedMenuId] = [];
+  if (state.recipes[state.selectedMenuId].find(r=>r.ingId===ingId)) return;
+  const ing = INGS.find(i=>i.id===ingId);
+  const defQty = (ing.unit==='g'||ing.unit==='ml') ? 100 : 1;
+  state.recipes[state.selectedMenuId].push({ingId, qty:defQty});
+  render();
+}
+function removeIng(ingId) {
+  state.recipes[state.selectedMenuId] = (state.recipes[state.selectedMenuId]||[]).filter(r=>r.ingId!==ingId);
+  render();
+}
+function adjustQty(ingId, delta) {
+  const r = (state.recipes[state.selectedMenuId]||[]).find(r=>r.ingId===ingId);
+  if (r) { r.qty = Math.max(0, r.qty + delta); render(); }
+}
+function setQty(ingId, val) {
+  const r = (state.recipes[state.selectedMenuId]||[]).find(r=>r.ingId===ingId);
+  if (r) { r.qty = parseFloat(val)||0; renderSidebar(); renderHeader(); renderRecipeTab(); }
+}
+function updateSetting(key, val, mul) {
+  state.settings[key] = (parseFloat(val)||0) / mul;
+  renderSettings();
+  renderHeader();
+  renderSidebar();
+  if (state.activeTab==='recipe') renderRecipeTab();
+}
+function switchMainTab(tab) {
+  state.activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id===`tab-${tab}`));
+  render();
+}
+function setSortBy(s) { state.sortBy = s; renderSummary(); }
+function setSummaryCat(c) { state.summaryCat = c; renderSummary(); }
+function goToMenu(id) {
+  state.selectedMenuId = id;
+  switchMainTab('recipe');
+}
+
+// ══════════════════════════════════════════
+//  EVENT LISTENERS
+// ══════════════════════════════════════════
+document.getElementById('menu-search').addEventListener('input', function() {
+  state.menuSearch = this.value; renderSidebar();
+});
+document.getElementById('ing-search').addEventListener('input', function() {
+  state.ingSearch = this.value; renderIngPanel();
+});
+document.getElementById('toggle-ing-panel').addEventListener('click', function() {
+  state.ingPanelVisible = !state.ingPanelVisible; render();
+});
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', function() { switchMainTab(this.dataset.tab); });
+});
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+render();
+</script>
+
+</body>
+</html>
